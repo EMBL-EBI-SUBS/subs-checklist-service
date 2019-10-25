@@ -434,3 +434,9 @@ gradle-app.setting
 **/build/
 
 # End of https://www.gitignore.io/api/perl,java,linux,macos,gradle,windows,eclipse,intellij,netbeans,intellij+all,intellij+iml,visualstudiocode
+
+application.pid
+LOG_HOME_IS_UNDEFINED
+/docker/application.properties
+/docker/subs-checklist-service.tar
+/docker/convert_to_usi.pl
