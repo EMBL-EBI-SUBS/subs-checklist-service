@@ -15,7 +15,7 @@ public class Scheduler {
     @Autowired
     private ChecklistManager checklistManager;
 
-    @Scheduled(cron = "0 30 01 * * ?")
+    @Scheduled(cron = "0 30 1 * * ?")
     public void updateChecklists() {
         LOGGER.debug("Updating checklist start.");
 

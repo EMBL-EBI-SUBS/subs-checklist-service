@@ -43,13 +43,13 @@ public class EnaChecklistService implements ArchiveChecklistService {
 
     private static final Map<String, String> CHECKLIST_NAME_LATEST_FILE_NAME_MAP = new HashMap<>(128);
 
-    @Value("${archive.ena.checklist.localcopydir}")
+    @Value("${checklist-service.archive.ena.checklist.localcopydir}")
     private String localCopyDir;
 
-    @Value("${archive.ena.checklist.executionsummarydir}")
+    @Value("${checklist-service.archive.ena.checklist.executionsummarydir}")
     private String execSummaryDir;
 
-    @Value("${archive.ena.checklist.conversionscript.path}")
+    @Value("${checklist-service.archive.ena.checklist.conversionscript.path}")
     private String conversionScriptPathStr;
 
     @Autowired
@@ -247,10 +247,12 @@ public class EnaChecklistService implements ArchiveChecklistService {
 
         ProcessBuilder processBuilder = new ProcessBuilder(conversionScriptPathStr, checklistName);
         Process process = null;
+        String stdOut = null, stdErr = null;
         try {
             process = processBuilder.start();
 
-            String stdout = getStandardOut(process);
+            stdOut = IOUtils.toString(process.getInputStream(), StandardCharsets.UTF_8);
+            stdErr = IOUtils.toString(process.getErrorStream(), StandardCharsets.UTF_8);
 
             if (process.waitFor(30, TimeUnit.SECONDS) == false) {
                 throw new RuntimeException("Conversion script took too long to complete.");
@@ -259,26 +261,10 @@ public class EnaChecklistService implements ArchiveChecklistService {
                 throw new RuntimeException("Conversion script exited with error.");
             }
 
-            return stdout;
+            return stdOut;
         } catch (Exception e) {
             throw new RuntimeException("Error running conversion script for : " + checklistName +
-                    ", StandardOut : " + getStandardOut(process) + ", StandardError : " + getStandardError(process), e);
-        }
-    }
-
-    private String getStandardOut(Process process) {
-        try {
-            return IOUtils.toString(process.getInputStream(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            return "";
-        }
-    }
-
-    private String getStandardError(Process process) {
-        try {
-            return IOUtils.toString(process.getErrorStream(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            return "";
+                    ", StandardOut : " + stdOut + ", StandardError : " + stdErr, e);
         }
     }
 }

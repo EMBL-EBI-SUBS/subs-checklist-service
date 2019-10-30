@@ -1,0 +1,13 @@
+version: '3'
+services:
+  subs-checklist-service-mongodb:
+    container_name: subs-checklist-service-mongodb
+    image: mongo:3.4.23-xenial
+    ports:
+      - "27017:27017"
+  subs-checklist-service:
+    container_name: subs-checklist-service
+    build: ./docker
+    image: subs-checklist-service
+    depends_on:
+      - subs-checklist-service-mongodb

@@ -1,18 +1,11 @@
 #!/bin/bash
 
-IMAGE_NAME='subs-checklist-service'
-CONTAINER_NAME=$IMAGE_NAME
-
 ./gradlew clean assemble
 
 mv ./build/distributions/*.tar ./docker/subs-checklist-service.tar
 
-docker stop $CONTAINER_NAME
+cp ./data-definitions/tools/ena-checklists-to-usi/convert_to_usi.pl ./docker
 
-docker rm -vf $CONTAINER_NAME
+docker-compose down
 
-docker build -t $IMAGE_NAME ./docker
-
-docker create --name $CONTAINER_NAME $IMAGE_NAME
-
-docker start $CONTAINER_NAME
+docker-compose up --build -d

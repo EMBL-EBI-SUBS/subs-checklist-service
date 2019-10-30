@@ -118,28 +118,51 @@ remotes {
 
 task deployJar(type: SshTask, dependsOn: 'assemble') {
     doLast {
-        def uploadJarFileName = project.name + "-"  + project.version + "." + System.currentTimeMillis() + ".jar"
-        File jarDeployDir = new File("/data/$gradle_env/$project.name/jar",uploadJarFileName)
-        sshRun(jarDeployDir)
+        def mainDeployDir = "/data/$gradle_env/$project.name"
+        sshRun(mainDeployDir)
     }
     ssh.settings {
         knownHosts = allowAnyHosts
     }
 }
 
-private Object sshRun(File jarDeployFile) {
+private Object sshRun(String mainDeployDir) {
     def uploadJarFileName = name + "-"  + version + "." + System.currentTimeMillis() + ".jar"
-    File jarDeployDir = jarDeployFile.getParentFile()
+    String jarDeployDir = mainDeployDir + "/jar"
+
+    String convScriptSrcDir = projectDir.getAbsolutePath() + "/data-definitions/tools/ena-checklists-to-usi"
+    String convScriptName = "convert_to_usi.pl"
+
     ssh.run {
         session(remotes.role(gradle_env)) {
             execute "/homes/sub_adm/create_dirs.sh $gradle_env $project.name", ignoreError: false
             println "Uploading jar $jar.archivePath.name to $jarDeployDir/$uploadJarFileName  area on $remote"
-            put(jar.archivePath.absolutePath, jarDeployFile.absolutePath)
+            put(jar.archivePath.absolutePath, jarDeployDir + "/" + uploadJarFileName)
             println "creating symbolic link to $jar.archiveName"
-            def result = execute "ln -s -f $jarDeployFile.absolutePath $jarDeployDir/$jar.baseName" + ".jar", ignoreError: true
+            def result = execute "ln -s -f $jarDeployDir/$uploadJarFileName $jarDeployDir/$jar.baseName" + ".jar", ignoreError: true
             println result
             println "updating permissions of $jarDeployDir/$jar.archiveName"
             execute "chmod u+x $jarDeployDir/*", ignoreError: false
+            println "Uploading conversion script $convScriptSrcDir/$convScriptName to $mainDeployDir area on $remote"
+            put(convScriptSrcDir + "/" + convScriptName, mainDeployDir + "/" + convScriptName)
+            println "updating permissions of $mainDeployDir/$convScriptName"
+            execute "chmod u+x $mainDeployDir/$convScriptName", ignoreError: false
+        }
+    }
+}
+
+task testSsh(type: SshTask) {
+    doLast {
+        sshTestRun()
+    }
+    ssh.settings {
+        knownHosts = allowAnyHosts
+    }
+}
+private Object sshTestRun(){
+    ssh.run {
+        session(remotes.role(gradle_env)){
+            println "started ssh session"
         }
     }
 }
