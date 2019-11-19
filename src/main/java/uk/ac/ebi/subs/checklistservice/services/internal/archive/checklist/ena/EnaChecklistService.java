@@ -1,4 +1,4 @@
-package uk.ac.ebi.subs.checklistservice.services.internal.archivechecklists;
+package uk.ac.ebi.subs.checklistservice.services.internal.archive.checklist.ena;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import uk.ac.ebi.subs.checklistservice.services.internal.archive.checklist.ArchiveChecklistService;
 import uk.ac.ebi.subs.repository.model.Checklist;
 import uk.ac.ebi.subs.repository.repos.ChecklistRepository;
 
@@ -41,16 +42,13 @@ public class EnaChecklistService implements ArchiveChecklistService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EnaChecklistService.class);
 
-    private static final Map<String, String> CHECKLIST_NAME_LATEST_FILE_NAME_MAP = new HashMap<>(128);
+    private final Map<String, String> CHECKLIST_NAME_LATEST_FILE_NAME_MAP = new HashMap<>(128);
 
     @Value("${checklist-service.archive.ena.checklist.localcopydir}")
     private String localCopyDir;
 
     @Value("${checklist-service.archive.ena.checklist.executionsummarydir}")
     private String execSummaryDir;
-
-    @Value("${checklist-service.archive.ena.checklist.conversionscript.path}")
-    private String conversionScriptPathStr;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -63,6 +61,9 @@ public class EnaChecklistService implements ArchiveChecklistService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private UsiChecklistGeneratorService usiChecklistGeneratorService;
 
     private String dateStamp;
 
@@ -154,7 +155,7 @@ public class EnaChecklistService implements ArchiveChecklistService {
         }
 
         try {
-            String genResult = runScript(checklistName);
+            String genResult = usiChecklistGeneratorService.generate(checklistName);
 
             LOGGER.debug("Reading converter results into checklist object for : {}", checklistName);
 
@@ -187,8 +188,10 @@ public class EnaChecklistService implements ArchiveChecklistService {
     @PostConstruct
     private void setup() {
         try {
+            LOGGER.debug("Local copy directory : {}", localCopyDir);
             Files.createDirectories(Paths.get(localCopyDir));
 
+            LOGGER.debug("Execution summary directory : {}", execSummaryDir);
             Files.createDirectories(Paths.get(execSummaryDir));
 
             loadExecutionSummary();
@@ -239,32 +242,6 @@ public class EnaChecklistService implements ArchiveChecklistService {
             LOGGER.debug("Execution summary saved : {}", execSummaryPath.toString());
         } catch (IOException e) {
             throw new RuntimeException("Error writing execution summary : " + execSummaryPath.toString(), e);
-        }
-    }
-
-    private String runScript(String checklistName) {
-        LOGGER.debug("Running checklist conversion script for : {}", checklistName);
-
-        ProcessBuilder processBuilder = new ProcessBuilder(conversionScriptPathStr, checklistName);
-        Process process = null;
-        String stdOut = null, stdErr = null;
-        try {
-            process = processBuilder.start();
-
-            stdOut = IOUtils.toString(process.getInputStream(), StandardCharsets.UTF_8);
-            stdErr = IOUtils.toString(process.getErrorStream(), StandardCharsets.UTF_8);
-
-            if (process.waitFor(30, TimeUnit.SECONDS) == false) {
-                throw new RuntimeException("Conversion script took too long to complete.");
-            }
-            if (process.exitValue() != 0) {
-                throw new RuntimeException("Conversion script exited with error.");
-            }
-
-            return stdOut;
-        } catch (Exception e) {
-            throw new RuntimeException("Error running conversion script for : " + checklistName +
-                    ", StandardOut : " + stdOut + ", StandardError : " + stdErr, e);
         }
     }
 }
