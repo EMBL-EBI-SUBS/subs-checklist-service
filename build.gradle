@@ -30,11 +30,6 @@ repositories {
 dependencies {
     compile("uk.ac.ebi.subs:subs-repository:2.30.1-SNAPSHOT")
 
-//    compile("org.springframework.boot:spring-boot-starter-hateoas")
-//    compile("org.springframework.boot:spring-boot-starter-data-mongodb")
-//    compile("org.springframework.boot:spring-boot-starter-web")
-//    compile ("org.springframework.hateoas:spring-hateoas:0.23.0.RELEASE") // for traverson
-
     compileOnly("org.projectlombok:lombok:1.16.18")
     compile 'org.codehaus.groovy:groovy-all:2.4.10'
     compile('commons-io:commons-io:2.6')

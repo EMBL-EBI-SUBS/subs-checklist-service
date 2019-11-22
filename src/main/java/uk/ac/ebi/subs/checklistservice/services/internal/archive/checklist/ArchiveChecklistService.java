@@ -1,4 +1,4 @@
-package uk.ac.ebi.subs.checklistservice.services.internal.archivechecklists;
+package uk.ac.ebi.subs.checklistservice.services.internal.archive.checklist;
 
 import uk.ac.ebi.subs.repository.model.Checklist;
 

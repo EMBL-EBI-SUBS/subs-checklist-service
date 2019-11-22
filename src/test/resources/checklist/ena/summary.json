@@ -1,0 +1,12 @@
+{
+  "summaries":[
+    {
+      "accession":"ERC000011",
+      "description":"Minimum information required for the sample",
+      "name":"ENA default sample checklist",
+      "dataType":"CHECKLIST",
+      "status":4
+    }
+  ],
+  "total":1
+}

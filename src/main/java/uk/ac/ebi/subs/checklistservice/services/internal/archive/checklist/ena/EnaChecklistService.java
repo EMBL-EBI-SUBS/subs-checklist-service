@@ -1,4 +1,4 @@
-package uk.ac.ebi.subs.checklistservice.services.internal.archivechecklists;
+package uk.ac.ebi.subs.checklistservice.services.internal.archive.checklist.ena;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mongodb.DBObject;
 import com.mongodb.util.JSON;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,20 +14,21 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import uk.ac.ebi.subs.checklistservice.services.internal.archive.checklist.ArchiveChecklistService;
 import uk.ac.ebi.subs.repository.model.Checklist;
 import uk.ac.ebi.subs.repository.repos.ChecklistRepository;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,21 +36,21 @@ public class EnaChecklistService implements ArchiveChecklistService {
 
     public static final String EXECUTION_SUMMARY_FILE_NAME = "exec-summary.json";
 
-    private static final String CHECKLIST_SUMMARY_URL = "https://www.ebi.ac.uk/ena/browser/api/summary/ERC000001-ERC999999";
-    private static final String CHECKLIST_FETCH_URL = "https://www.ebi.ac.uk/ena/browser/api/xml/";
-
     private static final Logger LOGGER = LoggerFactory.getLogger(EnaChecklistService.class);
 
-    private static final Map<String, String> CHECKLIST_NAME_LATEST_FILE_NAME_MAP = new HashMap<>(128);
+    private final Map<String, String> CHECKLIST_NAME_LATEST_FILE_NAME_MAP = new HashMap<>(128);
+
+    @Value("${checklist-service.archive.ena.checklist.url.summary}")
+    private String checklistSummaryUrl;
+
+    @Value("${checklist-service.archive.ena.checklist.url.fetch}")
+    private String checklistFetchUrl;
 
     @Value("${checklist-service.archive.ena.checklist.localcopydir}")
     private String localCopyDir;
 
     @Value("${checklist-service.archive.ena.checklist.executionsummarydir}")
     private String execSummaryDir;
-
-    @Value("${checklist-service.archive.ena.checklist.conversionscript.path}")
-    private String conversionScriptPathStr;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -63,6 +63,11 @@ public class EnaChecklistService implements ArchiveChecklistService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private UsiChecklistGeneratorService usiChecklistGeneratorService;
+
+    private URL fetchUrl;
 
     private String dateStamp;
 
@@ -91,7 +96,7 @@ public class EnaChecklistService implements ArchiveChecklistService {
     private List<String> getAvailableChecklistsNames() {
         LOGGER.debug("Getting available checklists names.");
 
-        ObjectNode summary = restTemplate.getForObject(CHECKLIST_SUMMARY_URL, ObjectNode.class);
+        ObjectNode summary = restTemplate.getForObject(checklistSummaryUrl, ObjectNode.class);
 
         List<String> result = new ArrayList<>(64);
 
@@ -107,11 +112,11 @@ public class EnaChecklistService implements ArchiveChecklistService {
     private void storeUpdateLocally(String checklistName) {
         LOGGER.debug("Storing update locally for checklist : {}", checklistName);
 
-        byte[] checklistXml = restTemplate.getForObject(CHECKLIST_FETCH_URL + checklistName, byte[].class);
-
-        byte[] newChecklistChecksum = DigestUtils.md5(checklistXml);
-
         try {
+            byte[] checklistXml = restTemplate.getForObject(new URL(fetchUrl, checklistName).toURI(), byte[].class);
+
+            byte[] newChecklistChecksum = DigestUtils.md5(checklistXml);
+
             String existingFileName = CHECKLIST_NAME_LATEST_FILE_NAME_MAP.get(checklistName);
             if (existingFileName != null) {
                 InputStream checklistIS = Files.newInputStream(Paths.get(localCopyDir, existingFileName));
@@ -138,6 +143,9 @@ public class EnaChecklistService implements ArchiveChecklistService {
 
             execSummary.checklist(checklistName).localCopyUpdated = Boolean.TRUE;
             execSummary.checklist(checklistName).systemUptodate = Boolean.FALSE;
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(
+                    "Error fetching checklist from URL : " + checklistFetchUrl + ", checklist : " + checklistName, e);
         } catch (IOException e) {
             throw new RuntimeException("Error storing update for checklist : " + checklistName, e);
         }
@@ -154,7 +162,7 @@ public class EnaChecklistService implements ArchiveChecklistService {
         }
 
         try {
-            String genResult = runScript(checklistName);
+            String genResult = usiChecklistGeneratorService.generate(checklistName);
 
             LOGGER.debug("Reading converter results into checklist object for : {}", checklistName);
 
@@ -187,8 +195,12 @@ public class EnaChecklistService implements ArchiveChecklistService {
     @PostConstruct
     private void setup() {
         try {
+            fetchUrl = new URL(checklistFetchUrl);
+
+            LOGGER.debug("Local copy directory : {}", localCopyDir);
             Files.createDirectories(Paths.get(localCopyDir));
 
+            LOGGER.debug("Execution summary directory : {}", execSummaryDir);
             Files.createDirectories(Paths.get(execSummaryDir));
 
             loadExecutionSummary();
@@ -239,32 +251,6 @@ public class EnaChecklistService implements ArchiveChecklistService {
             LOGGER.debug("Execution summary saved : {}", execSummaryPath.toString());
         } catch (IOException e) {
             throw new RuntimeException("Error writing execution summary : " + execSummaryPath.toString(), e);
-        }
-    }
-
-    private String runScript(String checklistName) {
-        LOGGER.debug("Running checklist conversion script for : {}", checklistName);
-
-        ProcessBuilder processBuilder = new ProcessBuilder(conversionScriptPathStr, checklistName);
-        Process process = null;
-        String stdOut = null, stdErr = null;
-        try {
-            process = processBuilder.start();
-
-            stdOut = IOUtils.toString(process.getInputStream(), StandardCharsets.UTF_8);
-            stdErr = IOUtils.toString(process.getErrorStream(), StandardCharsets.UTF_8);
-
-            if (process.waitFor(30, TimeUnit.SECONDS) == false) {
-                throw new RuntimeException("Conversion script took too long to complete.");
-            }
-            if (process.exitValue() != 0) {
-                throw new RuntimeException("Conversion script exited with error.");
-            }
-
-            return stdOut;
-        } catch (Exception e) {
-            throw new RuntimeException("Error running conversion script for : " + checklistName +
-                    ", StandardOut : " + stdOut + ", StandardError : " + stdErr, e);
         }
     }
 }
