@@ -5,5 +5,5 @@ import uk.ac.ebi.subs.repository.model.Checklist;
 import java.util.List;
 
 public interface ArchiveChecklistService {
-    List<String> getUpdatedChecklists();
+    List<Checklist> getUpdatedChecklists();
 }

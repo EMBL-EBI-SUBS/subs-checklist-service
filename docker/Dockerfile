@@ -1,9 +1,14 @@
-FROM picoded/ubuntu-openjdk-8-jdk
+FROM ubuntu:18.04
 
 RUN apt-get update
 
+RUN apt-get install -y build-essential
+
+RUN apt-get install -y openjdk-11-jre-headless
+
 #Required by perl module installer
-RUN apt-get install -y libssl-dev
+RUN apt-get install -y libnet-ssleay-perl
+RUN apt-get install -y libcrypt-ssleay-perl
 
 #Command-line JSON processor
 RUN apt-get install -y jq
@@ -14,12 +19,10 @@ RUN cpanm --notest REST::Client
 RUN cpanm --notest JSON::MaybeXS
 RUN cpanm --notest XML::Fast
 
-ADD subs-checklist-service.tar /opt
+WORKDIR /opt/subs-checklist-service
 
-RUN mv /opt/subs-checklist-service-* /opt/subs-checklist-service
+COPY subs-checklist-service.jar /opt/subs-checklist-service
 
 ADD convert_to_usi.pl /opt/subs-checklist-service
 
-WORKDIR /opt/subs-checklist-service/bin
-
-ENTRYPOINT ./subs-checklist-service
+ENTRYPOINT java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -jar subs-checklist-service.jar

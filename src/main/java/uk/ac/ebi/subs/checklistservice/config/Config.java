@@ -2,13 +2,17 @@ package uk.ac.ebi.subs.checklistservice.config;
 
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.mongodb.config.EnableMongoAuditing;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.client.RestTemplate;
 
 @EnableScheduling
 @EnableMongoRepositories(basePackages = "uk.ac.ebi.subs")
+@EnableMongoAuditing
+@ComponentScan(basePackages = {"uk.ac.ebi.subs.checklistservice", "uk.ac.ebi.subs.validator.schema"})
 @Configuration
 public class Config {
 

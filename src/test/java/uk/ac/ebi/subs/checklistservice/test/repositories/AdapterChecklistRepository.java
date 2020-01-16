@@ -8,30 +8,31 @@ import uk.ac.ebi.subs.repository.model.Checklist;
 import uk.ac.ebi.subs.repository.repos.ChecklistRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public class AdapterChecklistRepository implements ChecklistRepository {
     @Override
-    public List<Checklist> findByDataTypeId(String dataTypeId) {
+    public List<Checklist> findByDataTypeId(String s) {
         return null;
     }
 
     @Override
-    public <S extends Checklist> S save(S entity) {
+    public <S extends Checklist> S save(S s) {
         return null;
     }
 
     @Override
-    public <S extends Checklist> List<S> save(Iterable<S> entites) {
+    public <S extends Checklist> List<S> saveAll(Iterable<S> entities) {
         return null;
     }
 
     @Override
-    public Checklist findOne(String s) {
-        return null;
+    public Optional<Checklist> findById(String s) {
+        return Optional.empty();
     }
 
     @Override
-    public boolean exists(String s) {
+    public boolean existsById(String s) {
         return false;
     }
 
@@ -41,7 +42,7 @@ public class AdapterChecklistRepository implements ChecklistRepository {
     }
 
     @Override
-    public Iterable<Checklist> findAll(Iterable<String> strings) {
+    public Iterable<Checklist> findAllById(Iterable<String> strings) {
         return null;
     }
 
@@ -51,7 +52,7 @@ public class AdapterChecklistRepository implements ChecklistRepository {
     }
 
     @Override
-    public void delete(String s) {
+    public void deleteById(String s) {
 
     }
 
@@ -76,8 +77,8 @@ public class AdapterChecklistRepository implements ChecklistRepository {
     }
 
     @Override
-    public <S extends Checklist> S findOne(Example<S> example) {
-        return null;
+    public <S extends Checklist> Optional<S> findOne(Example<S> example) {
+        return Optional.empty();
     }
 
     @Override
@@ -106,12 +107,12 @@ public class AdapterChecklistRepository implements ChecklistRepository {
     }
 
     @Override
-    public void delete(Checklist entity) {
+    public void delete(Checklist checklist) {
 
     }
 
     @Override
-    public void delete(Iterable<? extends Checklist> entities) {
+    public void deleteAll(Iterable<? extends Checklist> entities) {
 
     }
 

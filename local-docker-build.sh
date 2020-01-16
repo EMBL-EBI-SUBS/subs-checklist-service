@@ -1,8 +1,8 @@
 #!/bin/bash
 
-./gradlew clean assemble
+./gradlew clean build -x test
 
-mv ./build/distributions/*.tar ./docker/subs-checklist-service.tar
+mv ./build/libs/*.jar ./docker/subs-checklist-service.jar
 
 cp ./data-definitions/tools/ena-checklists-to-usi/convert_to_usi.pl ./docker
 
