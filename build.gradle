@@ -4,22 +4,34 @@ buildscript {
         maven { url "https://plugins.gradle.org/m2/" }
     }
     dependencies {
-        classpath("org.springframework.boot:spring-boot-gradle-plugin:1.5.21.RELEASE")
-        classpath 'org.hidetake:gradle-ssh-plugin:1.1.3'
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:2.2.1.RELEASE")
     }
 }
 
+plugins {
+    id 'java-library'
+    id 'org.springframework.boot' version '2.2.1.RELEASE'
+    id 'io.spring.dependency-management' version '1.0.8.RELEASE'
+    id 'maven-publish'
+    id 'org.hidetake.ssh' version "2.10.1"
+}
+
 group 'uk.ac.ebi.subs'
-version '1.1.0-SNAPSHOT'
+version '1.2.0-SNAPSHOT'
 
-apply plugin: 'java'
-apply plugin: 'groovy'
-apply plugin: 'org.springframework.boot'
-apply plugin: 'maven'
-apply plugin: 'application'
-apply plugin: 'org.hidetake.ssh'
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
 
-mainClassName = "uk.ac.ebi.subs.checklistservice.ChecklistServiceApplication"
+bootJar {
+    mainClassName = "uk.ac.ebi.subs.checklistservice.ChecklistServiceApplication"
+    launchScript()
+}
+
+springBoot {
+    buildInfo()
+}
 
 repositories {
         maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
@@ -28,24 +40,19 @@ repositories {
 }
 
 dependencies {
-    compile("uk.ac.ebi.subs:subs-repository:2.30.1-SNAPSHOT")
+    compile("org.springframework.boot:spring-boot-starter-mail")
+
+    compile("uk.ac.ebi.subs:subs-repository:2.32.0-SNAPSHOT")
+    compile("uk.ac.ebi.subs:validator-common:3.12.0-SNAPSHOT")
 
     compileOnly("org.projectlombok:lombok:1.16.18")
     compile 'org.codehaus.groovy:groovy-all:2.4.10'
     compile('commons-io:commons-io:2.6')
+    compile('commons-codec:commons-codec:1.13')
+    compile('org.apache.commons:commons-lang3:3.9')
 
     testCompile("junit:junit")
     testCompile("org.springframework.boot:spring-boot-starter-test")
-}
-
-task sourceJar(type: Jar) { from sourceSets.main.allJava }
-
-artifacts {
-    archives jar
-    archives sourceJar {
-        classifier "sources"
-        destinationDir = new File("build/libs/sources")
-    }
 }
 
 task externalCiTest(type: Test) {
@@ -60,11 +67,6 @@ configure(externalCiTest){
     description = 'Run tests suitable for our external continuous integration environment.'
 }
 
-springBoot {
-    executable = true
-    buildInfo()
-}
-
 ssh.settings {
     user = 'sub_adm'
 }
@@ -75,19 +77,6 @@ if (project.hasProperty('sshKeyFile')) {
 
 if (project.hasProperty('sshPassphrase')) {
     ssh.settings.passphrase = sshPassphrase
-}
-
-task printJarName {
-    doLast {
-        println "$jar.archivePath.name"
-    }
-
-}
-
-task printJarFullPath {
-    doLast {
-        println "$jar.archivePath.absolutePath"
-    }
 }
 
 ext.gradle_env = hasProperty('env') ? env : 'dev'
@@ -111,7 +100,7 @@ remotes {
     }
 }
 
-task deployJar(type: SshTask, dependsOn: 'assemble') {
+task deployJar(dependsOn: 'assemble') {
     doLast {
         def mainDeployDir = "/data/$gradle_env/$project.name"
         sshRun(mainDeployDir)
@@ -146,7 +135,7 @@ private Object sshRun(String mainDeployDir) {
     }
 }
 
-task testSsh(type: SshTask) {
+task testSsh() {
     doLast {
         sshTestRun()
     }

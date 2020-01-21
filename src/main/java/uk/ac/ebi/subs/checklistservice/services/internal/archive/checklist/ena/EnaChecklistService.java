@@ -4,9 +4,8 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mongodb.DBObject;
-import com.mongodb.util.JSON;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,11 +15,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import uk.ac.ebi.subs.checklistservice.services.internal.archive.checklist.ArchiveChecklistService;
 import uk.ac.ebi.subs.repository.model.Checklist;
-import uk.ac.ebi.subs.repository.repos.ChecklistRepository;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
@@ -28,7 +27,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -56,9 +61,6 @@ public class EnaChecklistService implements ArchiveChecklistService {
     private RestTemplate restTemplate;
 
     @Autowired
-    private ChecklistRepository checklistRepository;
-
-    @Autowired
     private MappingMongoConverter mappingMongoConverter;
 
     @Autowired
@@ -74,18 +76,18 @@ public class EnaChecklistService implements ArchiveChecklistService {
     private ExecutionSummary execSummary;
 
     @Override
-    public List<String> getUpdatedChecklists() {
+    public List<Checklist> getUpdatedChecklists() {
         dateStamp = LocalDate.now().format(DateTimeFormatter.ofPattern("YYYYMMdd"));
 
         execSummary.dateTime = new Date();
 
-        List<String> res = getAvailableChecklistsNames().parallelStream()
+        // Do not use parallelStream(). See 'Notes' in the project readme.
+        List<Checklist> res = getAvailableChecklistsNames().stream()
                 .map(checklistName -> {
                     storeUpdateLocally(checklistName);
                     return generateChecklist(checklistName);
                 })
                 .filter(Objects::nonNull)
-                .map(this::updateChecklist)
                 .collect(Collectors.toList());
 
         saveExecutionSummary();
@@ -142,7 +144,6 @@ public class EnaChecklistService implements ArchiveChecklistService {
             CHECKLIST_NAME_LATEST_FILE_NAME_MAP.put(checklistName, newFileName);
 
             execSummary.checklist(checklistName).localCopyUpdated = Boolean.TRUE;
-            execSummary.checklist(checklistName).systemUptodate = Boolean.FALSE;
         } catch (URISyntaxException e) {
             throw new RuntimeException(
                     "Error fetching checklist from URL : " + checklistFetchUrl + ", checklist : " + checklistName, e);
@@ -155,7 +156,7 @@ public class EnaChecklistService implements ArchiveChecklistService {
         LOGGER.debug("Generating checklist for : {}", checklistName);
 
         if (!execSummary.checklist(checklistName).localCopyUpdated
-                && execSummary.checklist(checklistName).systemUptodate) {
+                && execSummary.checklist(checklistName).generationSuccessful) {
             LOGGER.debug("No need to generate checklist : {}. Already up-to-date.", checklistName);
 
             return null;
@@ -166,30 +167,22 @@ public class EnaChecklistService implements ArchiveChecklistService {
 
             LOGGER.debug("Reading converter results into checklist object for : {}", checklistName);
 
-            DBObject dbObject = (DBObject)JSON.parse(genResult);
+            Document document = Document.parse(genResult);
 
-            Checklist genChecklist = mappingMongoConverter.read(Checklist.class, dbObject);
+            Checklist genChecklist = mappingMongoConverter.read(Checklist.class, document);
 
             LOGGER.debug("Checklist object created for : {}", checklistName);
+
+            execSummary.checklist(checklistName).generationSuccessful = Boolean.TRUE;
 
             return genChecklist;
         } catch (Exception e) {
             LOGGER.error("Error generating checklist for : " + checklistName, e);
 
+            execSummary.checklist(checklistName).generationSuccessful = Boolean.FALSE;
+
             return null;
         }
-    }
-
-    private String updateChecklist(Checklist checklist) {
-        LOGGER.debug("Updating checklist in the system : {}", checklist.getId());
-
-        checklistRepository.save(checklist);
-
-        LOGGER.debug("Checklist updated in the system : {}", checklist.getId());
-
-        execSummary.checklist(checklist.getId()).systemUptodate = Boolean.TRUE;
-
-        return checklist.getId();
     }
 
     @PostConstruct
@@ -256,7 +249,13 @@ public class EnaChecklistService implements ArchiveChecklistService {
 }
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-class ExecutionSummary {
+class ExecutionSummary implements Serializable {
+
+    @JsonIgnore
+    private static final long serialVersionUID = 2L;
+
+    private long version = serialVersionUID;
+
     public Date dateTime;
 
     private Map<String, ChecklistStats> checklistStats = new HashMap<>();
@@ -276,5 +275,5 @@ class ExecutionSummary {
 class ChecklistStats {
     public Boolean localCopyUpdated = Boolean.FALSE;
 
-    public Boolean systemUptodate = Boolean.FALSE;
+    public Boolean generationSuccessful = Boolean.FALSE;
 }

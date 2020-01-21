@@ -9,5 +9,8 @@ services:
     container_name: subs-checklist-service
     build: ./docker
     image: subs-checklist-service
+    ports:
+#     for remote debugging
+      - "5005:5005"
     depends_on:
       - subs-checklist-service-mongodb

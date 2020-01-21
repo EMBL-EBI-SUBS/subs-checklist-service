@@ -4,7 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.IOUtils;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,13 +16,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.client.RestTemplate;
-import uk.ac.ebi.subs.checklistservice.services.internal.archive.checklist.ena.EnaChecklistService;
-import uk.ac.ebi.subs.checklistservice.services.internal.archive.checklist.ena.UsiChecklistGeneratorService;
 import uk.ac.ebi.subs.checklistservice.test.config.Config;
 import uk.ac.ebi.subs.repository.repos.ChecklistRepository;
 
@@ -50,13 +53,16 @@ public class EnaChecklistServiceTest {
     private String localCopyDir;
 
     @MockBean
+    private ChecklistRepository checklistRepository;
+
+    @MockBean
     private RestTemplate restTemplate;
 
     @MockBean
     private UsiChecklistGeneratorService usiChecklistGeneratorService;
 
-    @Autowired
-    private ChecklistRepository checklistRepository;
+    @MockBean
+    private JavaMailSender javaMailSender;
 
     @Autowired
     private EnaChecklistService enaChecklistService;
@@ -71,8 +77,6 @@ public class EnaChecklistServiceTest {
     @Before
     public void before() throws IOException, URISyntaxException {
         mockExternalResources();
-
-        checklistRepository.deleteAll();
     }
 
     @After
@@ -82,14 +86,15 @@ public class EnaChecklistServiceTest {
 
     @Test
     public void testSuccessful() throws IOException {
-        List<String> updatedChecklistIds = enaChecklistService.getUpdatedChecklists();
+        List<String> updatedChecklistIds = enaChecklistService.getUpdatedChecklists().stream()
+                .map(checklist -> checklist.getId()).collect(Collectors.toList());
+
+        Assert.assertEquals(expectedChecklistIds.size(), updatedChecklistIds.size());
 
         List<Path> allFiles = Files.list(Paths.get(localCopyDir)).collect(Collectors.toList());
 
         updatedChecklistIds.forEach(checklistId -> {
             Assert.assertTrue(expectedChecklistIds.contains(checklistId));
-
-            Assert.assertNotNull(checklistRepository.findOne(checklistId));
 
             Assert.assertTrue(allFiles.stream()
                     .anyMatch(filePath -> filePath.toFile().getName().contains(checklistId)));
@@ -109,16 +114,16 @@ public class EnaChecklistServiceTest {
                 .thenReturn(beforeRemock);
 
         // make sure the err'ed checklist id is not present afterwards.
-        Assert.assertFalse(enaChecklistService.getUpdatedChecklists().contains(checklistId));
-        Assert.assertNull(checklistRepository.findOne(checklistId));
+        Assert.assertTrue(enaChecklistService.getUpdatedChecklists().stream()
+                .noneMatch(checklist -> checklist.getId().equals(checklistId)));
 
         // assert that file did get created even when the generation failed.
         Assert.assertTrue(Files.list(Paths.get(localCopyDir))
                 .anyMatch(filePath -> filePath.toFile().getName().contains(checklistId)));
 
         // assert that checklist updated when generation succeeded on second attempt.
-        Assert.assertTrue(enaChecklistService.getUpdatedChecklists().contains(checklistId));
-        Assert.assertNotNull(checklistRepository.findOne(checklistId));
+        Assert.assertTrue(enaChecklistService.getUpdatedChecklists().stream()
+                .anyMatch(checklist -> checklist.getId().equals(checklistId)));
     }
 
     private void mockExternalResources() throws IOException, URISyntaxException {
