@@ -8,7 +8,6 @@ import uk.ac.ebi.subs.repository.model.Checklist;
 import uk.ac.ebi.subs.repository.repos.ChecklistRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 public class AdapterChecklistRepository implements ChecklistRepository {
     @Override
@@ -22,17 +21,17 @@ public class AdapterChecklistRepository implements ChecklistRepository {
     }
 
     @Override
-    public <S extends Checklist> List<S> saveAll(Iterable<S> entities) {
+    public <S extends Checklist> List<S> save(Iterable<S> entites) {
         return null;
     }
 
     @Override
-    public Optional<Checklist> findById(String s) {
-        return Optional.empty();
+    public Checklist findOne(String s) {
+        return null;
     }
 
     @Override
-    public boolean existsById(String s) {
+    public boolean exists(String s) {
         return false;
     }
 
@@ -42,7 +41,7 @@ public class AdapterChecklistRepository implements ChecklistRepository {
     }
 
     @Override
-    public Iterable<Checklist> findAllById(Iterable<String> strings) {
+    public Iterable<Checklist> findAll(Iterable<String> strings) {
         return null;
     }
 
@@ -52,7 +51,7 @@ public class AdapterChecklistRepository implements ChecklistRepository {
     }
 
     @Override
-    public void deleteById(String s) {
+    public void delete(String s) {
 
     }
 
@@ -77,8 +76,8 @@ public class AdapterChecklistRepository implements ChecklistRepository {
     }
 
     @Override
-    public <S extends Checklist> Optional<S> findOne(Example<S> example) {
-        return Optional.empty();
+    public <S extends Checklist> S findOne(Example<S> example) {
+        return null;
     }
 
     @Override
@@ -112,7 +111,7 @@ public class AdapterChecklistRepository implements ChecklistRepository {
     }
 
     @Override
-    public void deleteAll(Iterable<? extends Checklist> entities) {
+    public void delete(Iterable<? extends Checklist> entities) {
 
     }
 

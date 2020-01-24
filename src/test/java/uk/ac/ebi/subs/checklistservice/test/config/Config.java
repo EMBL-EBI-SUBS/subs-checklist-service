@@ -1,5 +1,6 @@
 package uk.ac.ebi.subs.checklistservice.test.config;
 
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -9,15 +10,18 @@ import uk.ac.ebi.subs.repository.model.ArchivedChecklist;
 import uk.ac.ebi.subs.repository.model.Checklist;
 import uk.ac.ebi.subs.repository.repos.ArchivedChecklistRepository;
 import uk.ac.ebi.subs.repository.repos.ChecklistRepository;
+import uk.ac.ebi.subs.validator.schema.JsonSchemaValidationService;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
 
 @Configuration
-@ComponentScan(basePackages = {"uk.ac.ebi.subs.checklistservice", "uk.ac.ebi.subs.validator.schema"})
+@ComponentScan(basePackages = {"uk.ac.ebi.subs.checklistservice"})
 public class Config {
+
+    @MockBean
+    private JsonSchemaValidationService jsonSchemaValidationService;
 
     @Bean
     public ChecklistRepository checklistRepository() {
@@ -37,10 +41,8 @@ public class Config {
             }
 
             @Override
-            public Optional<Checklist> findById(String s) {
-                Checklist res = map.get(s);
-
-                return res == null ? Optional.empty() : Optional.of(res);
+            public Checklist findOne(String s) {
+                return map.get(s);
             }
 
             @Override
@@ -68,10 +70,8 @@ public class Config {
             }
 
             @Override
-            public Optional<ArchivedChecklist> findById(String s) {
-                ArchivedChecklist res = map.get(s);
-
-                return res == null ? Optional.empty() : Optional.of(res);
+            public ArchivedChecklist findOne(String s) {
+                return map.get(s);
             }
 
             @Override

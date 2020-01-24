@@ -8,27 +8,25 @@ import uk.ac.ebi.subs.repository.model.ArchivedChecklist;
 import uk.ac.ebi.subs.repository.repos.ArchivedChecklistRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 public class AdapterArchivedChecklistRepository implements ArchivedChecklistRepository {
-
     @Override
     public <S extends ArchivedChecklist> S save(S entity) {
         return null;
     }
 
     @Override
-    public <S extends ArchivedChecklist> List<S> saveAll(Iterable<S> entities) {
+    public <S extends ArchivedChecklist> List<S> save(Iterable<S> entites) {
         return null;
     }
 
     @Override
-    public Optional<ArchivedChecklist> findById(String s) {
-        return Optional.empty();
+    public ArchivedChecklist findOne(String s) {
+        return null;
     }
 
     @Override
-    public boolean existsById(String s) {
+    public boolean exists(String s) {
         return false;
     }
 
@@ -38,7 +36,7 @@ public class AdapterArchivedChecklistRepository implements ArchivedChecklistRepo
     }
 
     @Override
-    public Iterable<ArchivedChecklist> findAllById(Iterable<String> strings) {
+    public Iterable<ArchivedChecklist> findAll(Iterable<String> strings) {
         return null;
     }
 
@@ -48,7 +46,7 @@ public class AdapterArchivedChecklistRepository implements ArchivedChecklistRepo
     }
 
     @Override
-    public void deleteById(String s) {
+    public void delete(String s) {
 
     }
 
@@ -58,7 +56,7 @@ public class AdapterArchivedChecklistRepository implements ArchivedChecklistRepo
     }
 
     @Override
-    public void deleteAll(Iterable<? extends ArchivedChecklist> entities) {
+    public void delete(Iterable<? extends ArchivedChecklist> entities) {
 
     }
 
@@ -88,8 +86,8 @@ public class AdapterArchivedChecklistRepository implements ArchivedChecklistRepo
     }
 
     @Override
-    public <S extends ArchivedChecklist> Optional<S> findOne(Example<S> example) {
-        return Optional.empty();
+    public <S extends ArchivedChecklist> S findOne(Example<S> example) {
+        return null;
     }
 
     @Override

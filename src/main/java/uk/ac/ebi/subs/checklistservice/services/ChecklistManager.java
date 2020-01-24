@@ -19,7 +19,6 @@ import uk.ac.ebi.subs.repository.repos.ChecklistRepository;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 @Service
 public class ChecklistManager {
@@ -70,8 +69,8 @@ public class ChecklistManager {
     private void updateChecklist(Checklist checklist) {
         LOGGER.debug("Updating checklist : {}", checklist.getId());
 
-        Optional<Checklist> currentOpt = checklistRepository.findById(checklist.getId());
-        currentOpt.ifPresent(current -> {
+        Checklist current = checklistRepository.findOne(checklist.getId());
+        if(current != null) {
             checklist.setCreatedDate(current.getCreatedDate());
             checklist.setLastModifiedDate(current.getLastModifiedDate());
             checklist.setVersion(current.getVersion() + 1);
@@ -84,7 +83,7 @@ public class ChecklistManager {
             archivedChecklistRepository.save(archivedChecklist);
 
             LOGGER.debug("Existing checklist archived : {}, version : {}", current.getId(), current.getVersion());
-        });
+        }
 
         checklistRepository.save(checklist);
 
@@ -92,7 +91,7 @@ public class ChecklistManager {
     }
 
     private void onChecklistValidationFailure(Checklist newChecklist, ChecklistValidationException ex) {
-        Checklist current = checklistRepository.findById(newChecklist.getId()).orElse(null);
+        Checklist current = checklistRepository.findOne(newChecklist.getId());
         if (current != null) {
             current.setOutdated(Boolean.TRUE);
 

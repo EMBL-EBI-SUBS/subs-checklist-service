@@ -4,8 +4,9 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -167,7 +168,7 @@ public class EnaChecklistService implements ArchiveChecklistService {
 
             LOGGER.debug("Reading converter results into checklist object for : {}", checklistName);
 
-            Document document = Document.parse(genResult);
+            DBObject document = BasicDBObject.parse(genResult);
 
             Checklist genChecklist = mappingMongoConverter.read(Checklist.class, document);
 

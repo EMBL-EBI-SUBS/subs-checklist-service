@@ -4,33 +4,31 @@ buildscript {
         maven { url "https://plugins.gradle.org/m2/" }
     }
     dependencies {
-        classpath("org.springframework.boot:spring-boot-gradle-plugin:2.2.1.RELEASE")
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:1.5.21.RELEASE")
     }
 }
 
 plugins {
     id 'java-library'
-    id 'org.springframework.boot' version '2.2.1.RELEASE'
+    id 'org.springframework.boot' version '1.5.21.RELEASE'
     id 'io.spring.dependency-management' version '1.0.8.RELEASE'
-    id 'maven-publish'
-    id 'org.hidetake.ssh' version "2.10.1"
+    id 'org.hidetake.ssh' version "1.1.3"
+    id 'application'
 }
 
 group 'uk.ac.ebi.subs'
 version '1.2.0-SNAPSHOT'
+
+mainClassName = "uk.ac.ebi.subs.checklistservice.ChecklistServiceApplication"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
 }
 
-bootJar {
-    mainClassName = "uk.ac.ebi.subs.checklistservice.ChecklistServiceApplication"
-    launchScript()
-}
-
 springBoot {
     buildInfo()
+    executable = true
 }
 
 repositories {
@@ -40,19 +38,17 @@ repositories {
 }
 
 dependencies {
+    compile("uk.ac.ebi.subs:subs-repository:2.33.3-SNAPSHOT")
+    compile("uk.ac.ebi.subs:validator-common:3.14.0-SNAPSHOT")
+
     compile("org.springframework.boot:spring-boot-starter-mail")
 
-    compile("uk.ac.ebi.subs:subs-repository:2.32.0-SNAPSHOT")
-    compile("uk.ac.ebi.subs:validator-common:3.12.0-SNAPSHOT")
-
-    compileOnly("org.projectlombok:lombok:1.16.18")
-    compile 'org.codehaus.groovy:groovy-all:2.4.10'
     compile('commons-io:commons-io:2.6')
     compile('commons-codec:commons-codec:1.13')
     compile('org.apache.commons:commons-lang3:3.9')
 
-    testCompile("junit:junit")
-    testCompile("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("junit:junit")
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
 task externalCiTest(type: Test) {
@@ -100,7 +96,7 @@ remotes {
     }
 }
 
-task deployJar(dependsOn: 'assemble') {
+task deployJar(type: SshTask, dependsOn: 'assemble') {
     doLast {
         def mainDeployDir = "/data/$gradle_env/$project.name"
         sshRun(mainDeployDir)
